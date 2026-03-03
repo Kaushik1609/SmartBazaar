@@ -33,10 +33,13 @@ app.get('/', (req, res) => {
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/bazaarexpress')
     .then(() => {
         console.log('Connected to MongoDB');
-        app.listen(PORT, () => {
-            console.log(`Server running on port ${PORT}`);
-        });
     })
     .catch((error) => {
-        console.error('Error connecting to MongoDB:', error.message);
+        console.log('⚠️ Could not connect to MongoDB. Starting server without database connection.');
+        console.error('MongoDB Error:', error.message);
     });
+
+// Start the server regardless of DB connection status
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
