@@ -12,39 +12,60 @@ const generateToken = (id) => {
 // @route   POST /api/auth/register
 export const registerUser = async (req, res) => {
     try {
-        const { phoneNumber, password, name, role, coordinates, address } = req.body;
+        const { phoneNumber, email, password, name, role, coordinates, address, shopName, shopDescription } = req.body;
 
-        // Check if user exists
-        const userExists = await User.findOne({ phoneNumber });
-        if (userExists) {
-            return res.status(400).json({ message: 'User already exists' });
+        // Check if user already exists (by phone or email)
+        if (phoneNumber) {
+            const phoneExists = await User.findOne({ phoneNumber });
+            if (phoneExists) {
+                return res.status(400).json({ message: 'User with this phone number already exists' });
+            }
+        }
+        if (email) {
+            const emailExists = await User.findOne({ email });
+            if (emailExists) {
+                return res.status(400).json({ message: 'User with this email already exists' });
+            }
+        }
+
+        if (!phoneNumber && !email) {
+            return res.status(400).json({ message: 'Please provide either a phone number or email' });
         }
 
         // Hash password
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Format location geoJSON
-        const location = {
-            type: 'Point',
-            coordinates: coordinates // expecting [longitude, latitude]
-        };
-
-        // Create user
-        const user = await User.create({
-            phoneNumber,
+        // Build user data
+        const userData = {
             password: hashedPassword,
             name,
-            role,
-            location,
+            role: role || 'customer',
             address
-        });
+        };
+
+        if (phoneNumber) userData.phoneNumber = phoneNumber;
+        if (email) userData.email = email;
+        if (shopName) userData.shopName = shopName;
+        if (shopDescription) userData.shopDescription = shopDescription;
+
+        // Format location geoJSON (only if coordinates provided)
+        if (coordinates && coordinates.length === 2) {
+            userData.location = {
+                type: 'Point',
+                coordinates: coordinates // expecting [longitude, latitude]
+            };
+        }
+
+        // Create user
+        const user = await User.create(userData);
 
         if (user) {
             res.status(201).json({
                 _id: user._id,
                 name: user.name,
                 phoneNumber: user.phoneNumber,
+                email: user.email,
                 role: user.role,
                 token: generateToken(user._id)
             });
@@ -56,20 +77,27 @@ export const registerUser = async (req, res) => {
     }
 };
 
-// @desc    Authenticate a user
+// @desc    Authenticate a user (phone or email)
 // @route   POST /api/auth/login
 export const loginUser = async (req, res) => {
     try {
-        const { phoneNumber, password } = req.body;
+        const { phoneNumber, email, password } = req.body;
 
-        // Check for user email/phone
-        const user = await User.findOne({ phoneNumber });
+        let user;
+        if (email) {
+            user = await User.findOne({ email });
+        } else if (phoneNumber) {
+            user = await User.findOne({ phoneNumber });
+        } else {
+            return res.status(400).json({ message: 'Please provide a phone number or email' });
+        }
 
         if (user && (await bcrypt.compare(password, user.password))) {
             res.json({
                 _id: user._id,
                 name: user.name,
                 phoneNumber: user.phoneNumber,
+                email: user.email,
                 role: user.role,
                 token: generateToken(user._id)
             });

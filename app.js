@@ -2,8 +2,63 @@
 const AppState = {
     currentScreen: 'splash',
     userType: 'customer', // 'customer' or 'vendor'
-    cart: []
+    cart: [],
+    language: 'English'
 };
+
+// --- AI API Configuration (Direct Gemini REST API) ---
+const API_BASE = 'http://localhost:5000';
+const GEMINI_API_KEY = 'AIzaSyCOYrgXUI7emJGPYQzoFuwwSXXEymoToe8';
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+async function askGeminiDirect(prompt, retries = 3) {
+    for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+            if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt)); // backoff: 2s, 4s
+            const res = await fetch(GEMINI_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            });
+            if (res.status === 429) { console.warn(`Gemini rate limited (attempt ${attempt + 1}/${retries})`); continue; }
+            const data = await res.json();
+            if (data.error) { console.warn('Gemini API error:', data.error.message); return null; }
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            const jsonMatch = text.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                try { return JSON.parse(jsonMatch[0]); } catch (e) { return { rawResponse: text }; }
+            }
+            return { rawResponse: text };
+        } catch (e) { console.warn('Gemini fetch error:', e); }
+    }
+    return null;
+}
+
+async function fetchAISuggestions(category, timeOfDay) {
+    return await askGeminiDirect(
+        `You are a shopping AI for an Indian grocery delivery app. Suggest 5 products for category: ${category || 'general'}, time: ${timeOfDay || 'afternoon'}.\nReturn JSON: { "suggestions": [{ "product": "name", "reason": "why" }] }`
+    );
+}
+
+async function fetchDeliveryEstimate(distanceKm, itemCount, timeOfDay) {
+    return await askGeminiDirect(
+        `Estimate delivery time for: Distance: ${distanceKm || 2}km, Items: ${itemCount || 3}, Time: ${timeOfDay || 'afternoon'}, Weather: clear.\nReturn JSON: { "estimatedMinutes": number, "confidence": "high/medium/low", "tip": "helpful tip" }`
+    );
+}
+
+async function fetchGeneratePromo(shopName, category, season) {
+    return await askGeminiDirect(
+        `Generate a promotional banner for: Shop: ${shopName || 'Local Store'}, Category: ${category || 'General'}, Season: ${season || 'Regular'}.\nReturn JSON: { "headline": "catchy headline", "tagline": "tagline text", "offerText": "offer like 20% OFF", "colors": { "primary": "#hex", "accent": "#hex" } }`
+    );
+}
+
+async function fetchDemandPrediction() {
+    return await askGeminiDirect(
+        `You are a demand prediction AI for a hyperlocal Indian grocery delivery app. Predict demand for these products:\n- Amul Taaza Milk (Category: Dairy, Sold: 45, Stock: 2)\n- Britannia Bread (Category: Bakery, Sold: 30, Stock: 8)\n- Aashirvaad Atta 5kg (Category: Groceries, Sold: 20, Stock: 15)\n- Tata Salt 1kg (Category: Groceries, Sold: 18, Stock: 0)\n- Fortune Oil 1L (Category: Groceries, Sold: 12, Stock: 6)\n\nReturn JSON: { "predictions": [{ "productName": "name", "demandLevel": "High/Medium/Low", "suggestion": "actionable advice" }] }`
+    );
+}
 
 // Main render function
 function renderScreen() {
@@ -14,6 +69,10 @@ function renderScreen() {
         case 'splash':
             appElement.innerHTML = renderSplash();
             setupSplashEvents();
+            break;
+        case 'language':
+            appElement.innerHTML = renderLanguage();
+            setupLanguageEvents();
             break;
         case 'location':
             appElement.innerHTML = renderLocation();
@@ -29,9 +88,11 @@ function renderScreen() {
             break;
         case 'shop-detail':
             appElement.innerHTML = renderShopDetail();
+            setupShopDetailAI();
             break;
         case 'cart':
             appElement.innerHTML = renderCart();
+            setupCartAI();
             break;
         case 'orders':
             appElement.innerHTML = renderOrders();
@@ -46,6 +107,7 @@ function renderScreen() {
         case 'vendor-dashboard':
             AppState.userType = 'vendor';
             appElement.innerHTML = renderVendorDashboard();
+            setupVendorDashboardAI();
             break;
         case 'vendor-orders':
             AppState.userType = 'vendor';
@@ -78,10 +140,66 @@ function renderSplash() {
 }
 
 function setupSplashEvents() {
-    // Auto-navigate to location after 2 seconds
+    // Auto-navigate to language after 2 seconds
     setTimeout(() => {
-        navigateTo('location');
+        navigateTo('language');
     }, 2000);
+}
+
+function renderLanguage() {
+    return `
+        <div style="padding: 24px; height: 100%; display: flex; flex-direction: column; background: var(--bg-color); justify-content: center;">
+            <div style="text-align: center; margin-bottom: 40px; margin-top: 40px;">
+                <i class="ri-translate-2" style="font-size: 64px; color: var(--primary-orange);"></i>
+                <h2 style="margin: 20px 0 10px;">Choose Language</h2>
+                <p class="text-muted">Select your preferred language</p>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 40px;">
+                <button class="lang-btn" data-lang="English" style="background: white; border: 2px solid var(--primary-orange); padding: 16px; border-radius: var(--border-radius-md); font-size: 16px; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.3s;">
+                    <span>English</span> <i class="ri-checkbox-circle-fill check-icon" style="color: var(--primary-orange); font-size: 24px;"></i>
+                </button>
+                <button class="lang-btn" data-lang="Hindi" style="background: white; border: 1px solid var(--border-color); padding: 16px; border-radius: var(--border-radius-md); font-size: 16px; font-weight: 500; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.3s;">
+                    <span>हिंदी (Hindi)</span> <i class="ri-checkbox-blank-circle-line check-icon" style="color: var(--border-color); font-size: 24px;"></i>
+                </button>
+                <button class="lang-btn" data-lang="Marathi" style="background: white; border: 1px solid var(--border-color); padding: 16px; border-radius: var(--border-radius-md); font-size: 16px; font-weight: 500; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.3s;">
+                    <span>मराठी (Marathi)</span> <i class="ri-checkbox-blank-circle-line check-icon" style="color: var(--border-color); font-size: 24px;"></i>
+                </button>
+            </div>
+
+            <button id="btn-lang-continue" class="btn-primary" style="margin-top: auto; margin-bottom: 20px;">Continue</button>
+        </div>
+    `;
+}
+
+function setupLanguageEvents() {
+    const langBtns = document.querySelectorAll('.lang-btn');
+    langBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            // Reset all styles
+            langBtns.forEach(b => {
+                b.style.border = '1px solid var(--border-color)';
+                b.style.fontWeight = '500';
+                const icon = b.querySelector('.check-icon');
+                icon.className = 'ri-checkbox-blank-circle-line check-icon';
+                icon.style.color = 'var(--border-color)';
+            });
+
+            // Set active style
+            const targetBtn = e.currentTarget;
+            targetBtn.style.border = '2px solid var(--primary-orange)';
+            targetBtn.style.fontWeight = '600';
+            const icon = targetBtn.querySelector('.check-icon');
+            icon.className = 'ri-checkbox-circle-fill check-icon';
+            icon.style.color = 'var(--primary-orange)';
+
+            AppState.language = targetBtn.dataset.lang;
+        });
+    });
+
+    document.getElementById('btn-lang-continue').addEventListener('click', () => {
+        navigateTo('location');
+    });
 }
 
 function renderLocation() {
@@ -117,23 +235,62 @@ function setupLocationEvents() {
 function renderLogin() {
     return `
         <div style="padding: 24px; height: 100%; display: flex; flex-direction: column; background: var(--bg-color);">
-            <div style="margin-top: 40px;">
+            <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
+                <i class="ri-arrow-left-line" style="font-size: 24px; cursor: pointer;" onclick="navigateTo('location')"></i>
+                <span style="font-size: 14px; font-weight: 600; color: var(--primary-orange); display: flex; align-items: center; gap: 4px; cursor: pointer;" onclick="navigateTo('language')">
+                    <i class="ri-translate-2"></i> \${AppState.language || 'English'}
+                </span>
+            </div>
+            <div style="margin-top: 30px;">
                 <h2 style="margin-bottom: 10px;">Welcome to BazaarExpress</h2>
-                <p class="text-muted" style="margin-bottom: 40px;">Login or sign up to continue</p>
+                <p class="text-muted" style="margin-bottom: 30px;">Login or sign up to continue</p>
                 
-                <div class="card">
-                    <label style="font-size: 14px; font-weight: 500; color: var(--text-muted); margin-bottom: 8px; display: block;">Mobile Number</label>
-                    <div style="display: flex; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); overflow: hidden; margin-bottom: 16px;">
-                        <div style="background: #F0F0F0; padding: 12px 16px; font-weight: 500;">+91</div>
-                        <input type="tel" placeholder="Enter your number" style="flex: 1; border: none; padding: 12px 16px; outline: none; font-size: 16px; font-family: inherit;">
+                <div class="card" id="login-form-container">
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                        <div id="tab-phone" style="flex: 1; text-align: center; font-weight: 600; color: var(--primary-orange); border-bottom: 2px solid var(--primary-orange); cursor: pointer; padding-bottom: 5px;">Phone</div>
+                        <div id="tab-email" style="flex: 1; text-align: center; font-weight: 500; color: var(--text-muted); cursor: pointer; padding-bottom: 5px;">Email</div>
+                    </div>
+
+                    <div id="phone-login">
+                        <label style="font-size: 14px; font-weight: 500; color: var(--text-muted); margin-bottom: 8px; display: block;">Mobile Number</label>
+                        <div style="display: flex; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); overflow: hidden; margin-bottom: 16px;">
+                            <div style="background: #F0F0F0; padding: 12px 16px; font-weight: 500; border-right: 1px solid var(--border-color);">+91</div>
+                            <input type="tel" id="mobile-input" placeholder="Enter your number" style="flex: 1; border: none; padding: 12px 16px; outline: none; font-size: 16px; font-family: inherit;">
+                        </div>
+                        
+                        <div id="otp-container" style="display: none; margin-bottom: 16px;">
+                            <label style="font-size: 14px; font-weight: 500; color: var(--text-muted); margin-bottom: 8px; display: block;">Enter OTP</label>
+                            <div style="display: flex; gap: 10px; justify-content: space-between;">
+                                <input type="text" maxlength="1" style="width: 45px; height: 45px; text-align: center; font-size: 20px; font-weight: 600; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); outline: none;" class="otp-input">
+                                <input type="text" maxlength="1" style="width: 45px; height: 45px; text-align: center; font-size: 20px; font-weight: 600; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); outline: none;" class="otp-input">
+                                <input type="text" maxlength="1" style="width: 45px; height: 45px; text-align: center; font-size: 20px; font-weight: 600; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); outline: none;" class="otp-input">
+                                <input type="text" maxlength="1" style="width: 45px; height: 45px; text-align: center; font-size: 20px; font-weight: 600; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); outline: none;" class="otp-input">
+                            </div>
+                            <div style="text-align: right; margin-top: 8px; font-size: 12px; color: var(--primary-orange); font-weight: 600; cursor: pointer;">Resend OTP</div>
+                        </div>
+
+                        <button id="btn-login" class="btn-primary" style="margin-bottom: 16px;">Get OTP</button>
+                    </div>
+
+                    <div id="email-login" style="display: none;">
+                        <label style="font-size: 14px; font-weight: 500; color: var(--text-muted); margin-bottom: 8px; display: block;">Email Address</label>
+                        <input type="email" placeholder="Enter email" style="width: 100%; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 12px 16px; outline: none; font-size: 14px; font-family: inherit; margin-bottom: 16px; box-sizing: border-box;">
+                        
+                        <label style="font-size: 14px; font-weight: 500; color: var(--text-muted); margin-bottom: 8px; display: block;">Password</label>
+                        <input type="password" placeholder="Enter password" style="width: 100%; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 12px 16px; outline: none; font-size: 14px; font-family: inherit; margin-bottom: 8px; box-sizing: border-box;">
+                        
+                        <div style="text-align: right; margin-bottom: 16px; font-size: 12px; color: var(--primary-orange); font-weight: 600; cursor: pointer;">Forgot Password?</div>
+
+                        <button id="btn-email-login" class="btn-primary" style="margin-bottom: 16px;">Login</button>
                     </div>
                     
-                    <button id="btn-login" class="btn-primary" style="margin-bottom: 16px;">Continue</button>
+                    <div style="text-align: center; margin: 16px 0; color: var(--text-muted); font-size: 14px; position: relative;">
+                        <span style="background: white; padding: 0 10px; position: relative; z-index: 1;">OR</span>
+                        <div style="position: absolute; top: 50%; left: 0; right: 0; border-top: 1px solid var(--border-color); z-index: 0;"></div>
+                    </div>
                     
-                    <div style="text-align: center; margin: 16px 0; color: var(--text-muted); font-size: 14px;">OR</div>
-                    
-                    <button style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; background: white; border: 1px solid var(--border-color); padding: 12px; border-radius: var(--border-radius-sm); font-weight: 500; cursor: pointer;">
-                        <i class="ri-google-fill" style="color: #DB4437; font-size: 18px;"></i> Sign in with Google
+                    <button style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; background: white; border: 1px solid var(--border-color); padding: 12px; border-radius: var(--border-radius-sm); font-weight: 500; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+                        <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style="width: 20px; height: 20px;"> Sign in with Google
                     </button>
                 </div>
             </div>
@@ -142,7 +299,92 @@ function renderLogin() {
 }
 
 function setupLoginEvents() {
-    document.getElementById('btn-login').addEventListener('click', () => {
+    let mode = 'phone'; // phone or email
+    let otpSent = false;
+
+    const tabPhone = document.getElementById('tab-phone');
+    const tabEmail = document.getElementById('tab-email');
+    const phoneLogin = document.getElementById('phone-login');
+    const emailLogin = document.getElementById('email-login');
+
+    // Tab Switching
+    tabPhone.addEventListener('click', () => {
+        mode = 'phone';
+        tabPhone.style.color = 'var(--primary-orange)';
+        tabPhone.style.borderBottom = '2px solid var(--primary-orange)';
+        tabPhone.style.fontWeight = '600';
+
+        tabEmail.style.color = 'var(--text-muted)';
+        tabEmail.style.borderBottom = 'none';
+        tabEmail.style.fontWeight = '500';
+
+        phoneLogin.style.display = 'block';
+        emailLogin.style.display = 'none';
+    });
+
+    tabEmail.addEventListener('click', () => {
+        mode = 'email';
+        tabEmail.style.color = 'var(--primary-orange)';
+        tabEmail.style.borderBottom = '2px solid var(--primary-orange)';
+        tabEmail.style.fontWeight = '600';
+
+        tabPhone.style.color = 'var(--text-muted)';
+        tabPhone.style.borderBottom = 'none';
+        tabPhone.style.fontWeight = '500';
+
+        emailLogin.style.display = 'block';
+        phoneLogin.style.display = 'none';
+    });
+
+    const btnLogin = document.getElementById('btn-login');
+    const otpContainer = document.getElementById('otp-container');
+    const mobileInput = document.getElementById('mobile-input');
+
+    btnLogin.addEventListener('click', () => {
+        if (!otpSent) {
+            if (mobileInput.value.length < 10) {
+                alert('Please enter a valid mobile number');
+                return;
+            }
+            otpSent = true;
+            otpContainer.style.display = 'block';
+            btnLogin.innerText = 'Verify & Login';
+
+            // Auto focus first OTP input
+            const otpInputs = document.querySelectorAll('.otp-input');
+            if (otpInputs.length > 0) otpInputs[0].focus();
+
+            // Manage OTP inputs
+            otpInputs.forEach((input, index) => {
+                input.addEventListener('input', function () {
+                    if (this.value.length === 1) {
+                        if (index < otpInputs.length - 1) {
+                            otpInputs[index + 1].focus();
+                        }
+                    }
+                });
+                input.addEventListener('keydown', function (e) {
+                    if (e.key === 'Backspace' && !this.value) {
+                        if (index > 0) {
+                            otpInputs[index - 1].focus();
+                        }
+                    }
+                });
+            });
+        } else {
+            // Check if OTP is entered
+            const otpInputs = document.querySelectorAll('.otp-input');
+            let otp = '';
+            otpInputs.forEach(input => otp += input.value);
+            if (otp.length < 4) {
+                alert('Please enter 4-digit OTP');
+                return;
+            }
+            navigateTo('home');
+        }
+    });
+
+    document.getElementById('btn-email-login').addEventListener('click', () => {
         navigateTo('home');
     });
 }
@@ -170,16 +412,34 @@ function renderHome() {
             </div>
             
             <div style="flex: 1; overflow-y: auto; padding-bottom: 80px;">
-                <!-- Video Banner -->
-                <div style="padding: 16px;">
-                    <div style="border-radius: var(--border-radius-lg); overflow: hidden; box-shadow: var(--shadow-medium); position: relative; background: #000; height: 200px;">
-                        <video autoplay loop muted playsinline style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8;">
-                            <source src="Whisk_ezn2edo1itz3itz30smjhtytidmjrtl1ewmx0co.mp4" type="video/mp4">
-                        </video>
-                        <div style="position: absolute; bottom: 16px; left: 16px; color: white;">
-                            <span style="background: var(--primary-orange); padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase;">Promoted</span>
-                            <h3 style="margin-top: 8px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">Fresh organic produce<br>from local farms.</h3>
+                <!-- Video Banner Carousel -->
+                <div style="padding: 16px; position: relative;">
+                    <div id="video-carousel" style="display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 0; border-radius: var(--border-radius-lg); scroll-behavior: smooth; -ms-overflow-style: none; scrollbar-width: none;">
+                        <!-- Video 1 -->
+                        <div style="min-width: 100%; scroll-snap-align: start; border-radius: var(--border-radius-lg); overflow: hidden; box-shadow: var(--shadow-medium); position: relative; background: #000; height: 200px;">
+                            <video autoplay loop muted playsinline style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8;">
+                                <source src="Whisk_ezn2edo1itz3itz30smjhtytidmjrtl1ewmx0co.mp4" type="video/mp4">
+                            </video>
+                            <div style="position: absolute; bottom: 16px; left: 16px; color: white;">
+                                <span style="background: var(--primary-orange); padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase;">Promoted</span>
+                                <h3 style="margin-top: 8px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">Fresh organic produce<br>from local farms.</h3>
+                            </div>
                         </div>
+                        <!-- Video 2 -->
+                        <div style="min-width: 100%; scroll-snap-align: start; border-radius: var(--border-radius-lg); overflow: hidden; box-shadow: var(--shadow-medium); position: relative; background: #000; height: 200px;">
+                            <video autoplay loop muted playsinline style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8;">
+                                <source src="Whisk_mjyklznjvdojfmyy0iykdtytajmxqtlxytn10co.mp4" type="video/mp4">
+                            </video>
+                            <div style="position: absolute; bottom: 16px; left: 16px; color: white;">
+                                <span style="background: var(--secondary-green); padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase;">Trending</span>
+                                <h3 style="margin-top: 8px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">Quick delivery to<br>your doorstep.</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Carousel Dots -->
+                    <div style="display: flex; justify-content: center; gap: 8px; margin-top: 10px;">
+                        <div class="carousel-dot active-dot" data-index="0" style="width: 20px; height: 6px; border-radius: 3px; background: var(--primary-orange); cursor: pointer; transition: all 0.3s;"></div>
+                        <div class="carousel-dot" data-index="1" style="width: 6px; height: 6px; border-radius: 3px; background: #ccc; cursor: pointer; transition: all 0.3s;"></div>
                     </div>
                 </div>
 
@@ -277,7 +537,56 @@ function renderShopCard(name, distance, time, rating, tags) {
 }
 
 function setupHomeEvents() {
-    // Setup home events
+    // Video Carousel logic
+    const carousel = document.getElementById('video-carousel');
+    const dots = document.querySelectorAll('.carousel-dot');
+    if (!carousel || dots.length === 0) return;
+
+    let currentSlide = 0;
+    const totalSlides = 2;
+
+    function updateDots(index) {
+        dots.forEach((dot, i) => {
+            if (i === index) {
+                dot.style.width = '20px';
+                dot.style.background = 'var(--primary-orange)';
+            } else {
+                dot.style.width = '6px';
+                dot.style.background = '#ccc';
+            }
+        });
+    }
+
+    function scrollToSlide(index) {
+        carousel.scrollTo({ left: carousel.clientWidth * index, behavior: 'smooth' });
+        currentSlide = index;
+        updateDots(index);
+    }
+
+    // Dot click handlers
+    dots.forEach(dot => {
+        dot.addEventListener('click', () => {
+            const index = parseInt(dot.dataset.index);
+            scrollToSlide(index);
+        });
+    });
+
+    // Auto-scroll every 4 seconds
+    setInterval(() => {
+        currentSlide = (currentSlide + 1) % totalSlides;
+        scrollToSlide(currentSlide);
+    }, 4000);
+
+    // Update dots on manual scroll
+    carousel.addEventListener('scroll', () => {
+        const scrollLeft = carousel.scrollLeft;
+        const width = carousel.clientWidth;
+        const newIndex = Math.round(scrollLeft / width);
+        if (newIndex !== currentSlide) {
+            currentSlide = newIndex;
+            updateDots(currentSlide);
+        }
+    });
 }
 
 function renderShopDetail() {
@@ -319,13 +628,17 @@ function renderShopDetail() {
                         </div>
                     </div>
 
-                    <!-- Smart Feature: Predicted Popular -->
-                    <div style="background: var(--primary-orange-light); border: 1px dashed var(--primary-orange); border-radius: var(--border-radius-sm); padding: 10px; display: flex; align-items: center; gap: 10px;">
+                    <!-- Smart Feature: Predicted Popular (AI-Powered) -->
+                    <div id="ai-suggestion-box" style="background: var(--primary-orange-light); border: 1px dashed var(--primary-orange); border-radius: var(--border-radius-sm); padding: 10px; display: flex; align-items: center; gap: 10px;">
                         <i class="ri-sparkling-fill" style="color: var(--primary-orange); font-size: 20px;"></i>
-                        <div style="font-size: 12px;">
-                            <span style="font-weight: 600; color: var(--primary-orange);">AI Suggestion:</span> Highly ordered at this time - Milk & Bread.
+                        <div id="ai-suggestion-text" style="font-size: 12px;">
+                            <span style="font-weight: 600; color: var(--primary-orange);">AI Suggestion:</span>
+                            <span id="ai-suggestion-content" style="display: inline-flex; align-items: center; gap: 4px;"><i class="ri-loader-4-line" style="animation: spin 1s linear infinite; font-size: 14px;"></i> Loading smart suggestions...</span>
                         </div>
                     </div>
+                    <style>
+                        @keyframes spin { to { transform: rotate(360deg); } }
+                    </style>
                 </div>
 
                 <h3 style="margin-bottom: 16px; font-size: 16px;">Products</h3>
@@ -411,13 +724,13 @@ function renderCart() {
                     </div>
                 </div>
 
-                <!-- Smart Features: Delivery Mode -->
+                <!-- Smart Features: Delivery Mode (AI-Powered) -->
                 <div style="background: white; border-radius: var(--border-radius-md); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-soft);">
                     <h4 style="font-size: 14px; margin-bottom: 12px;">Select Delivery Speed</h4>
-                    <div style="background: #E8F5E9; border: 1px dashed #4CAF50; border-radius: var(--border-radius-sm); padding: 10px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 10px;">
+                    <div id="ai-delivery-box" style="background: #E8F5E9; border: 1px dashed #4CAF50; border-radius: var(--border-radius-sm); padding: 10px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 10px;">
                         <i class="ri-sparkling-fill" style="color: #4CAF50; font-size: 20px;"></i>
-                        <div style="font-size: 12px;">
-                            <span style="font-weight: 600; color: #4CAF50;">Smart Suggestion:</span> We noticed daily essentials in your cart. Choose <strong>Fast Delivery</strong> to get them within 30 mins!
+                        <div id="ai-delivery-text" style="font-size: 12px;">
+                            <span style="font-weight: 600; color: #4CAF50;">AI Estimate:</span> <span id="ai-delivery-content">Calculating delivery time...</span>
                         </div>
                     </div>
 
@@ -692,17 +1005,30 @@ function renderVendorDashboard() {
                     </div>
                 </div>
 
-                <!-- Smart Feature: Auto-generate Promotional Banner -->
+                <!-- Smart Feature: Auto-generate Promotional Banner (AI-Powered) -->
                 <div style="background: linear-gradient(135deg, var(--primary-orange) 0%, #FF512F 100%); border-radius: var(--border-radius-md); padding: 16px; margin-bottom: 20px; color: white; box-shadow: var(--shadow-medium); position: relative; overflow: hidden;">
                     <i class="ri-sparkling-fill" style="position: absolute; right: -10px; top: -10px; font-size: 80px; opacity: 0.2;"></i>
                     <div style="position: relative; z-index: 1;">
                         <h3 style="font-size: 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
                             <i class="ri-magic-line"></i> Create Promo Banner
                         </h3>
-                        <p style="font-size: 12px; opacity: 0.9; margin-bottom: 12px; line-height: 1.4;">Attract more customers with an AI-generated seasonal video banner for your shop.</p>
-                        <button style="background: white; color: var(--primary-orange); border: none; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                        <p id="ai-promo-desc" style="font-size: 12px; opacity: 0.9; margin-bottom: 12px; line-height: 1.4;">Attract more customers with an AI-generated seasonal banner for your shop.</p>
+                        <button id="ai-promo-btn" onclick="handleGeneratePromo()" style="background: white; color: var(--primary-orange); border: none; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px;">
                             Generate Now <i class="ri-arrow-right-line"></i>
                         </button>
+                    </div>
+                    <div id="ai-promo-result" style="display: none; position: relative; z-index: 1; margin-top: 12px; background: rgba(255,255,255,0.15); border-radius: 8px; padding: 12px;"></div>
+                </div>
+
+                <!-- Smart Feature: AI Demand Prediction -->
+                <div style="background: white; border-radius: var(--border-radius-md); padding: 16px; box-shadow: var(--shadow-soft); margin-bottom: 20px; border-left: 4px solid #2196F3;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h3 style="font-size: 14px; display: flex; align-items: center; gap: 8px; color: #1976D2;">
+                            <i class="ri-line-chart-fill"></i> AI Demand Prediction
+                        </h3>
+                    </div>
+                    <div id="ai-demand-content" style="font-size: 13px; color: var(--text-muted);">
+                        <i class="ri-loader-4-line" style="animation: spin 1s linear infinite;"></i> Loading AI predictions...
                     </div>
                 </div>
 
@@ -876,7 +1202,94 @@ function renderVendorAddProduct() {
     `;
 }
 
+// --- AI Setup Functions ---
+
+function setupShopDetailAI() {
+    const hour = new Date().getHours();
+    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+    fetchAISuggestions('Groceries', timeOfDay).then(data => {
+        const el = document.getElementById('ai-suggestion-content');
+        if (!el) return;
+        if (data && data.suggestions && data.suggestions.length > 0) {
+            const topItems = data.suggestions.slice(0, 3).map(s => s.product).join(', ');
+            el.innerHTML = `Highly ordered at this time — <strong>${topItems}</strong>`;
+        } else {
+            el.textContent = 'Highly ordered at this time — Milk & Bread.';
+        }
+    });
+}
+
+function setupCartAI() {
+    const hour = new Date().getHours();
+    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+    fetchDeliveryEstimate(1.2, 2, timeOfDay).then(data => {
+        const el = document.getElementById('ai-delivery-content');
+        if (!el) return;
+        if (data && data.estimatedMinutes) {
+            el.innerHTML = `Estimated delivery in <strong>${data.estimatedMinutes} mins</strong> (Confidence: ${data.confidence || 'high'}). ${data.tip || ''}`;
+        } else {
+            el.textContent = 'Choose Fast Delivery to get your order within 30 mins!';
+        }
+    });
+}
+
+function setupVendorDashboardAI() {
+    // Fetch demand prediction
+    fetchDemandPrediction().then(data => {
+        const el = document.getElementById('ai-demand-content');
+        if (!el) return;
+        if (data && data.aiPredictions && data.aiPredictions.predictions) {
+            const preds = data.aiPredictions.predictions;
+            el.innerHTML = preds.map(p => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--border-color);">
+                    <span style="font-weight: 500;">${p.productName}</span>
+                    <span style="font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600;
+                        background: ${p.demandLevel === 'High' ? '#E8F5E9' : '#FFF3E0'};
+                        color: ${p.demandLevel === 'High' ? '#4CAF50' : '#FF9800'};">
+                        ${p.demandLevel} Demand
+                    </span>
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px; padding: 2px 0;">💡 ${p.suggestion}</div>
+            `).join('');
+        } else {
+            el.innerHTML = '<span style="color: var(--text-muted);">No order data yet. Predictions will appear once you have sales.</span>';
+        }
+    });
+}
+
+async function handleGeneratePromo() {
+    const btn = document.getElementById('ai-promo-btn');
+    const resultEl = document.getElementById('ai-promo-result');
+    if (!btn || !resultEl) return;
+
+    btn.innerHTML = '<i class="ri-loader-4-line" style="animation: spin 1s linear infinite;"></i> Generating...';
+    btn.disabled = true;
+
+    const data = await fetchGeneratePromo('Sharma General Store', 'Groceries', 'Summer');
+
+    if (data && data.headline) {
+        resultEl.style.display = 'block';
+        resultEl.innerHTML = `
+            <div style="font-size: 18px; font-weight: 700; margin-bottom: 4px;">🎉 ${data.headline}</div>
+            <div style="font-size: 13px; opacity: 0.9; margin-bottom: 4px;">${data.tagline || ''}</div>
+            <div style="font-size: 14px; font-weight: 700; background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 4px; display: inline-block;">${data.offerText || ''}</div>
+        `;
+        btn.innerHTML = 'Regenerate <i class="ri-refresh-line"></i>';
+    } else {
+        resultEl.style.display = 'block';
+        resultEl.innerHTML = '<div style="font-size: 13px;">Could not generate promo. Make sure backend is running.</div>';
+        btn.innerHTML = 'Retry <i class="ri-refresh-line"></i>';
+    }
+    btn.disabled = false;
+}
+
 // Initial render
 document.addEventListener('DOMContentLoaded', () => {
     renderScreen();
 });
+fetch(`${API_BASE}/api/products`)
+    .then(res => res.json())
+    .then(products => {
+        console.log("Products:", products);
+    })
+    .catch(err => console.error(err));

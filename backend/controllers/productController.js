@@ -1,18 +1,33 @@
 import Product from '../models/Product.js';
 
-// @desc    Get all products for a specific vendor
+// @desc    Get all products (optional filter by vendorId)
 // @route   GET /api/products?vendorId=xxx
 // @access  Public
 export const getProducts = async (req, res) => {
     try {
-        const { vendorId } = req.query;
+        const { vendorId, category } = req.query;
         let query = {};
-        if (vendorId) {
-            query.vendor = vendorId;
-        }
+        if (vendorId) query.vendor = vendorId;
+        if (category) query.category = category;
 
-        const products = await Product.find(query);
+        const products = await Product.find(query).populate('vendor', 'name shopName');
         res.json(products);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get single product by ID
+// @route   GET /api/products/:id
+// @access  Public
+export const getProductById = async (req, res) => {
+    try {
+        const product = await Product.findById(req.params.id).populate('vendor', 'name shopName');
+        if (product) {
+            res.json(product);
+        } else {
+            res.status(404).json({ message: 'Product not found' });
+        }
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -58,7 +73,7 @@ export const updateProduct = async (req, res) => {
             }
 
             product.name = name || product.name;
-            product.price = price || product.price;
+            product.price = price !== undefined ? price : product.price;
             product.stock = stock !== undefined ? stock : product.stock;
             product.category = category || product.category;
             product.weight = weight || product.weight;

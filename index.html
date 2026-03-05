@@ -1,20 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vendor Verse - Hyperlocal Delivery Prototype</title>
+    <title>VendorVerse - Hyperlocal Delivery</title>
+    <meta name="description"
+        content="VendorVerse connects you to local vendors for fast delivery of groceries, dairy, vegetables, and more.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet" />
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div id="mobile-container">
-        <!-- App content injected here -->
         <div id="app"></div>
     </div>
+
+    <!-- reCAPTCHA container for Firebase Phone Auth -->
+    <div id="recaptcha-container"></div>
+
+    <!-- Firebase SDK (v9 compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+
+    <!-- Google Maps API (replace YOUR_API_KEY with actual key) -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCOYrgXUI7emJGPYQzoFuwwSXXEymoToe8&libraries=places"
+        async defer></script>
+
+    <!-- App modules (order matters) -->
+    <script src="i18n.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="auth-otp.js"></script>
+    <script src="maps.js"></script>
     <script src="app.js"></script>
 </body>
+
 </html>

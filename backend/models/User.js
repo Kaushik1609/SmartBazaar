@@ -3,9 +3,16 @@ import mongoose from 'mongoose';
 const userSchema = new mongoose.Schema({
     phoneNumber: {
         type: String,
-        required: true,
         unique: true,
+        sparse: true,
         trim: true
+    },
+    email: {
+        type: String,
+        unique: true,
+        sparse: true,
+        trim: true,
+        lowercase: true
     },
     password: {
         type: String,
@@ -20,15 +27,19 @@ const userSchema = new mongoose.Schema({
         enum: ['customer', 'vendor', 'delivery'],
         default: 'customer'
     },
+    shopName: {
+        type: String
+    },
+    shopDescription: {
+        type: String
+    },
     location: {
         type: {
             type: String,
-            enum: ['Point'],
-            required: true
+            enum: ['Point']
         },
         coordinates: {
-            type: [Number], // [longitude, latitude]
-            required: true
+            type: [Number] // [longitude, latitude]
         }
     },
     address: {

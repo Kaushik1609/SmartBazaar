@@ -44,12 +44,50 @@ const orderSchema = new mongoose.Schema({
         enum: ['fast', 'standard'],
         required: true
     },
+    distanceKm: {
+        type: Number,
+        default: 0
+    },
+    deliveryAddress: {
+        type: String,
+        default: ''
+    },
+    customerLocation: {
+        type: {
+            type: String,
+            enum: ['Point']
+        },
+        coordinates: {
+            type: [Number] // [longitude, latitude]
+        }
+    },
+    estimatedDeliveryMinutes: {
+        type: Number,
+        default: 0
+    },
     status: {
         type: String,
-        enum: ['pending', 'accepted', 'rejected', 'packing', 'out_for_delivery', 'delivered'],
+        enum: ['pending', 'accepted', 'rejected', 'packing', 'out_for_delivery', 'delivered', 'cancelled'],
         default: 'pending'
+    },
+    statusHistory: [{
+        status: { type: String, required: true },
+        timestamp: { type: Date, default: Date.now },
+        note: { type: String, default: '' }
+    }],
+    feeBreakdown: {
+        baseFee: { type: Number, default: 0 },
+        distanceCharge: { type: Number, default: 0 },
+        prioritySurcharge: { type: Number, default: 0 },
+        bulkSurcharge: { type: Number, default: 0 },
+        surgeMultiplier: { type: Number, default: 1 },
+        discount: { type: Number, default: 0 },
+        finalFee: { type: Number, default: 0 }
     }
 }, { timestamps: true });
+
+// Index for geospatial queries on customer location
+orderSchema.index({ customerLocation: '2dsphere' });
 
 const Order = mongoose.model('Order', orderSchema);
 export default Order;
