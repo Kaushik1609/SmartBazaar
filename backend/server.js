@@ -29,6 +29,15 @@ app.get('/api/test', (req, res) => {
   res.json({ message: 'Backend Connected Successfully 🚀' });
 });
 
+// Quick Vendor Test Route (browse directly)
+app.get('/api/vendors/nearby', (req, res) => {
+  res.json([
+    { id: 1, name: "Fresh Bazaar", distance: "1.2 km", rating: 4.8, category: "Groceries" },
+    { id: 2, name: "Vijay Mart", distance: "800 m", rating: 4.6, category: "General Store" },
+    { id: 3, name: "Green Leaf Veggies", distance: "2.5 km", rating: 4.5, category: "Vegetables" }
+  ]);
+});
+
 // Basic Route
 app.get('/', (req, res) => {
   res.send('VendorVerse Backend API is running!');

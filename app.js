@@ -292,6 +292,20 @@ function renderLogin() {
                     <button style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; background: white; border: 1px solid var(--border-color); padding: 12px; border-radius: var(--border-radius-sm); font-weight: 500; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
                         <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style="width: 20px; height: 20px;"> Sign in with Google
                     </button>
+
+                    <!-- Shop Owner Toggle -->
+                    <div id="shop-owner-toggle" style="display: flex; align-items: center; justify-content: space-between; margin-top: 20px; padding: 14px 16px; background: linear-gradient(135deg, #FFF8F0 0%, #FFF3E0 100%); border: 1px solid #FFE0B2; border-radius: var(--border-radius-sm); cursor: pointer; transition: all 0.3s ease;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <i class="ri-store-2-fill" style="font-size: 20px; color: var(--primary-orange);"></i>
+                            <div>
+                                <div style="font-size: 14px; font-weight: 600; color: var(--text-main);">Are you a shop owner?</div>
+                                <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Toggle to access your vendor dashboard</div>
+                            </div>
+                        </div>
+                        <div id="toggle-switch" style="width: 48px; height: 26px; background: #ccc; border-radius: 13px; position: relative; transition: background 0.3s ease; flex-shrink: 0;">
+                            <div id="toggle-knob" style="width: 22px; height: 22px; background: white; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: transform 0.3s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -380,12 +394,51 @@ function setupLoginEvents() {
                 alert('Please enter 4-digit OTP');
                 return;
             }
-            navigateTo('home');
+            const isVendor = document.getElementById('toggle-switch').dataset.active === 'true';
+            if (isVendor) {
+                AppState.userType = 'vendor';
+                navigateTo('vendor-dashboard');
+            } else {
+                AppState.userType = 'customer';
+                navigateTo('home');
+            }
         }
     });
 
     document.getElementById('btn-email-login').addEventListener('click', () => {
-        navigateTo('home');
+        const isVendor = document.getElementById('toggle-switch').dataset.active === 'true';
+        if (isVendor) {
+            AppState.userType = 'vendor';
+            navigateTo('vendor-dashboard');
+        } else {
+            AppState.userType = 'customer';
+            navigateTo('home');
+        }
+    });
+
+    // Shop Owner Toggle Logic
+    const toggleContainer = document.getElementById('shop-owner-toggle');
+    const toggleSwitch = document.getElementById('toggle-switch');
+    const toggleKnob = document.getElementById('toggle-knob');
+    toggleSwitch.dataset.active = 'false';
+
+    toggleContainer.addEventListener('click', () => {
+        const isActive = toggleSwitch.dataset.active === 'true';
+        toggleSwitch.dataset.active = isActive ? 'false' : 'true';
+
+        if (!isActive) {
+            // Turn ON
+            toggleSwitch.style.background = 'var(--primary-orange)';
+            toggleKnob.style.transform = 'translateX(22px)';
+            toggleContainer.style.borderColor = 'var(--primary-orange)';
+            toggleContainer.style.background = 'linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%)';
+        } else {
+            // Turn OFF
+            toggleSwitch.style.background = '#ccc';
+            toggleKnob.style.transform = 'translateX(0)';
+            toggleContainer.style.borderColor = '#FFE0B2';
+            toggleContainer.style.background = 'linear-gradient(135deg, #FFF8F0 0%, #FFF3E0 100%)';
+        }
     });
 }
 
