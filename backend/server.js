@@ -1,3 +1,4 @@
+console.log(process.env.GEMINI_API_KEY);
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
@@ -9,6 +10,7 @@ import orderRoutes from './routes/orderRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 
 dotenv.config();
+console.log('GOOGLE_API_KEY:', process.env.GOOGLE_API_KEY ? '✅ Loaded' : '❌ Not found');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
