@@ -211,15 +211,20 @@ function renderLocation() {
             <div style="margin-top: 40px; text-align: center;">
                 <i class="ri-map-pin-2-fill" style="font-size: 64px; color: var(--primary-orange);"></i>
                 <h2 style="margin: 20px 0 10px;">${typeof t !== 'undefined' ? t('location_title') : 'Find Local Shops Near You'}</h2>
-                <p class="text-muted" style="margin-bottom: 40px;">${typeof t !== 'undefined' ? t('location_subtitle') : 'Serving within a 3-5 km radius for lightning fast delivery.'}</p>
+                <p class="text-muted" style="margin-bottom: 20px;">${typeof t !== 'undefined' ? t('location_subtitle') : 'Serving within a 3-5 km radius for lightning fast delivery.'}</p>
             </div>
             
+            <div id="map-preview" style="height: 200px; width: 100%; border-radius: var(--border-radius-md); background: #eee; margin-bottom: 20px; display: none; overflow: hidden; box-shadow: var(--shadow-soft);"></div>
+
             <div style="margin-top: auto;">
                 <button id="btn-detect-location" class="btn-primary" style="margin-bottom: 16px; display: flex; justify-content: center; align-items: center; gap: 8px;">
                     <i class="ri-focus-3-line"></i> ${typeof t !== 'undefined' ? t('detect_location') : 'Detect Current Location'}
                 </button>
                 <button id="btn-manual-location" class="btn-primary" style="background: white; color: var(--primary-orange); border: 1px solid var(--primary-orange);">
                     ${typeof t !== 'undefined' ? t('enter_manually') : 'Enter Area Manually'}
+                </button>
+                <button id="btn-confirm-location" class="btn-primary" style="margin-top: 16px; display: none; background: var(--secondary-green); border-color: var(--secondary-green);">
+                    ${typeof t !== 'undefined' ? t('continue') : 'Continue'}
                 </button>
             </div>
         </div>
@@ -228,9 +233,53 @@ function renderLocation() {
 
 function setupLocationEvents() {
     document.getElementById('btn-detect-location').addEventListener('click', () => {
+        const btn = document.getElementById('btn-detect-location');
+        const mapPreview = document.getElementById('map-preview');
+        const confirmBtn = document.getElementById('btn-confirm-location');
+        const manualBtn = document.getElementById('btn-manual-location');
+
+        const originalText = btn.innerHTML;
+        btn.innerHTML = `<i class="ri-loader-4-line" style="animation: spin 1s linear infinite;"></i> ${typeof t !== 'undefined' ? t('detecting') : 'Detecting...'}`;
+        btn.disabled = true;
+
+        if (typeof detectUserLocation !== 'undefined') {
+            detectUserLocation(async (coords, err) => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+
+                if (err) {
+                    alert(err);
+                } else {
+                    console.log('Location detected:', coords);
+                    AppState.location = coords;
+
+                    // Show map
+                    btn.style.display = 'none';
+                    manualBtn.style.display = 'none';
+                    mapPreview.style.display = 'block';
+                    confirmBtn.style.display = 'flex';
+
+                    // Initialize map and add markers
+                    const locationMap = initMap(mapPreview, coords, 15);
+                    addUserMarker(coords);
+
+                    // Load nearby vendors (if available)
+                    if (typeof loadNearbyVendors !== 'undefined') {
+                        await loadNearbyVendors(coords.lat, coords.lng, 5);
+                    }
+                }
+            });
+        } else {
+            console.warn('maps.js not loaded');
+            navigateTo('login');
+        }
+    });
+
+    document.getElementById('btn-manual-location').addEventListener('click', () => {
         navigateTo('login');
     });
-    document.getElementById('btn-manual-location').addEventListener('click', () => {
+
+    document.getElementById('btn-confirm-location').addEventListener('click', () => {
         navigateTo('login');
     });
 }

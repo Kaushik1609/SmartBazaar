@@ -163,6 +163,12 @@ async function loadNearbyVendors(lat, lng, radius = 5) {
             `http://localhost:5000/api/vendors/nearby?lat=${lat}&lng=${lng}&radius=${radius}`
         );
         const vendors = await response.json();
+
+        if (vendors.length === 0) {
+            console.warn('No vendors returned from backend, using demo data');
+            throw new Error('Empty vendors array');
+        }
+
         addVendorMarkers(vendors);
         return vendors;
     } catch (error) {

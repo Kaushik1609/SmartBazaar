@@ -123,5 +123,6 @@
     "enter_4_digit": "Please enter 4-digit OTP",
     "map_view": "Map View",
     "nearby_vendors": "Nearby Vendors",
+    "detecting": "Detecting...",
     "your_location": "Your Location"
 }
