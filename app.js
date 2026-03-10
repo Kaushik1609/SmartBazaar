@@ -133,8 +133,8 @@ function navigateTo(screen) {
 function renderSplash() {
     return `
         <div style="height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: linear-gradient(135deg, var(--primary-orange) 0%, #FF512F 100%); color: white;">
-            <div style="font-size: 48px; font-weight: 700; margin-bottom: 10px; animation: fadeIn 0.8s ease-out;">Bazaar<br>Express</div>
-            <p style="font-size: 16px; font-weight: 500; opacity: 0.9; animation: fadeIn 1.2s ease-out;">Supporting Local, Delivering Fast</p>
+            <div style="font-size: 48px; font-weight: 700; margin-bottom: 10px; animation: fadeIn 0.8s ease-out;">${typeof t !== 'undefined' ? t('splash_title').replace(/\\n/g, '<br>') : 'Bazaar<br>Express'}</div>
+            <p style="font-size: 16px; font-weight: 500; opacity: 0.9; animation: fadeIn 1.2s ease-out;">${typeof t !== 'undefined' ? t('splash_tagline') : 'Supporting Local, Delivering Fast'}</p>
         </div>
     `;
 }
@@ -151,8 +151,8 @@ function renderLanguage() {
         <div style="padding: 24px; height: 100%; display: flex; flex-direction: column; background: var(--bg-color); justify-content: center;">
             <div style="text-align: center; margin-bottom: 40px; margin-top: 40px;">
                 <i class="ri-translate-2" style="font-size: 64px; color: var(--primary-orange);"></i>
-                <h2 style="margin: 20px 0 10px;">Choose Language</h2>
-                <p class="text-muted">Select your preferred language</p>
+                <h2 style="margin: 20px 0 10px;">${typeof t !== 'undefined' ? t('lang_title') : 'Choose Language'}</h2>
+                <p class="text-muted">${typeof t !== 'undefined' ? t('lang_subtitle') : 'Select your preferred language'}</p>
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 40px;">
@@ -167,7 +167,7 @@ function renderLanguage() {
                 </button>
             </div>
 
-            <button id="btn-lang-continue" class="btn-primary" style="margin-top: auto; margin-bottom: 20px;">Continue</button>
+            <button id="btn-lang-continue" class="btn-primary" style="margin-top: auto; margin-bottom: 20px;">${typeof t !== 'undefined' ? t('continue') : 'Continue'}</button>
         </div>
     `;
 }
@@ -197,7 +197,10 @@ function setupLanguageEvents() {
         });
     });
 
-    document.getElementById('btn-lang-continue').addEventListener('click', () => {
+    document.getElementById('btn-lang-continue').addEventListener('click', async () => {
+        if (typeof I18n !== 'undefined') {
+            await I18n.setLanguage(AppState.language);
+        }
         navigateTo('location');
     });
 }
@@ -207,16 +210,16 @@ function renderLocation() {
         <div style="padding: 24px; height: 100%; display: flex; flex-direction: column; background: var(--bg-color);">
             <div style="margin-top: 40px; text-align: center;">
                 <i class="ri-map-pin-2-fill" style="font-size: 64px; color: var(--primary-orange);"></i>
-                <h2 style="margin: 20px 0 10px;">Find Local Shops Near You</h2>
-                <p class="text-muted" style="margin-bottom: 40px;">Serving within a 3-5 km radius for lightning fast delivery.</p>
+                <h2 style="margin: 20px 0 10px;">${typeof t !== 'undefined' ? t('location_title') : 'Find Local Shops Near You'}</h2>
+                <p class="text-muted" style="margin-bottom: 40px;">${typeof t !== 'undefined' ? t('location_subtitle') : 'Serving within a 3-5 km radius for lightning fast delivery.'}</p>
             </div>
             
             <div style="margin-top: auto;">
                 <button id="btn-detect-location" class="btn-primary" style="margin-bottom: 16px; display: flex; justify-content: center; align-items: center; gap: 8px;">
-                    <i class="ri-focus-3-line"></i> Detect Current Location
+                    <i class="ri-focus-3-line"></i> ${typeof t !== 'undefined' ? t('detect_location') : 'Detect Current Location'}
                 </button>
                 <button id="btn-manual-location" class="btn-primary" style="background: white; color: var(--primary-orange); border: 1px solid var(--primary-orange);">
-                    Enter Area Manually
+                    ${typeof t !== 'undefined' ? t('enter_manually') : 'Enter Area Manually'}
                 </button>
             </div>
         </div>
@@ -242,17 +245,17 @@ function renderLogin() {
                 </span>
             </div>
             <div style="margin-top: 30px;">
-                <h2 style="margin-bottom: 10px;">Welcome to BazaarExpress</h2>
-                <p class="text-muted" style="margin-bottom: 30px;">Login or sign up to continue</p>
+                <h2 style="margin-bottom: 10px;">${typeof t !== 'undefined' ? t('login_title') : 'Welcome to BazaarExpress'}</h2>
+                <p class="text-muted" style="margin-bottom: 30px;">${typeof t !== 'undefined' ? t('login_subtitle') : 'Login or sign up to continue'}</p>
                 
                 <div class="card" id="login-form-container">
                     <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
-                        <div id="tab-phone" style="flex: 1; text-align: center; font-weight: 600; color: var(--primary-orange); border-bottom: 2px solid var(--primary-orange); cursor: pointer; padding-bottom: 5px;">Phone</div>
-                        <div id="tab-email" style="flex: 1; text-align: center; font-weight: 500; color: var(--text-muted); cursor: pointer; padding-bottom: 5px;">Email</div>
+                        <div id="tab-phone" style="flex: 1; text-align: center; font-weight: 600; color: var(--primary-orange); border-bottom: 2px solid var(--primary-orange); cursor: pointer; padding-bottom: 5px;">${typeof t !== 'undefined' ? t('phone_tab') : 'Phone'}</div>
+                        <div id="tab-email" style="flex: 1; text-align: center; font-weight: 500; color: var(--text-muted); cursor: pointer; padding-bottom: 5px;">${typeof t !== 'undefined' ? t('email_tab') : 'Email'}</div>
                     </div>
 
                     <div id="phone-login">
-                        <label style="font-size: 14px; font-weight: 500; color: var(--text-muted); margin-bottom: 8px; display: block;">Mobile Number</label>
+                        <label style="font-size: 14px; font-weight: 500; color: var(--text-muted); margin-bottom: 8px; display: block;">${typeof t !== 'undefined' ? t('mobile_label') : 'Mobile Number'}</label>
                         <div style="display: flex; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); overflow: hidden; margin-bottom: 16px;">
                             <div style="background: #F0F0F0; padding: 12px 16px; font-weight: 500; border-right: 1px solid var(--border-color);">+91</div>
                             <input type="tel" id="mobile-input" placeholder="Enter your number" style="flex: 1; border: none; padding: 12px 16px; outline: none; font-size: 16px; font-family: inherit;">
@@ -269,11 +272,11 @@ function renderLogin() {
                             <div style="text-align: right; margin-top: 8px; font-size: 12px; color: var(--primary-orange); font-weight: 600; cursor: pointer;">Resend OTP</div>
                         </div>
 
-                        <button id="btn-login" class="btn-primary" style="margin-bottom: 16px;">Get OTP</button>
+                        <button id="btn-login" class="btn-primary" style="margin-bottom: 16px;">${typeof t !== 'undefined' ? t('get_otp') : 'Get OTP'}</button>
                     </div>
 
                     <div id="email-login" style="display: none;">
-                        <label style="font-size: 14px; font-weight: 500; color: var(--text-muted); margin-bottom: 8px; display: block;">Email Address</label>
+                        <label style="font-size: 14px; font-weight: 500; color: var(--text-muted); margin-bottom: 8px; display: block;">${typeof t !== 'undefined' ? t('email_label') : 'Email Address'}</label>
                         <input type="email" placeholder="Enter email" style="width: 100%; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 12px 16px; outline: none; font-size: 14px; font-family: inherit; margin-bottom: 16px; box-sizing: border-box;">
                         
                         <label style="font-size: 14px; font-weight: 500; color: var(--text-muted); margin-bottom: 8px; display: block;">Password</label>
@@ -281,7 +284,7 @@ function renderLogin() {
                         
                         <div style="text-align: right; margin-bottom: 16px; font-size: 12px; color: var(--primary-orange); font-weight: 600; cursor: pointer;">Forgot Password?</div>
 
-                        <button id="btn-email-login" class="btn-primary" style="margin-bottom: 16px;">Login</button>
+                        <button id="btn-email-login" class="btn-primary" style="margin-bottom: 16px;">${typeof t !== 'undefined' ? t('login_btn') : 'Login'}</button>
                     </div>
                     
                     <div style="text-align: center; margin: 16px 0; color: var(--text-muted); font-size: 14px; position: relative;">
@@ -290,7 +293,7 @@ function renderLogin() {
                     </div>
                     
                     <button style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; background: white; border: 1px solid var(--border-color); padding: 12px; border-radius: var(--border-radius-sm); font-weight: 500; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
-                        <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style="width: 20px; height: 20px;"> Sign in with Google
+                        <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style="width: 20px; height: 20px;"> ${typeof t !== 'undefined' ? t('google_signin') : 'Sign in with Google'}
                     </button>
 
                     <!-- Shop Owner Toggle -->
@@ -1337,7 +1340,11 @@ async function handleGeneratePromo() {
 }
 
 // Initial render
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    if (typeof I18n !== 'undefined') {
+        await I18n.init();
+        if (typeof AppState !== 'undefined') AppState.language = I18n.getLanguageName();
+    }
     renderScreen();
 });
 fetch(`${API_BASE}/api/products`)
