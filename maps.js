@@ -49,11 +49,12 @@ function detectUserLocation(callback) {
         },
         (error) => {
             console.warn('Geolocation error:', error.message);
-            // Default to Bangalore
+            // Default to Bangalore (fallback silently)
             userCoords = { lat: 12.9716, lng: 77.5946 };
-            callback(userCoords, error.message);
+            console.log('Falling back to default coordinates:', userCoords);
+            callback(userCoords, null);
         },
-        { enableHighAccuracy: true, timeout: 5000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
 }
 
