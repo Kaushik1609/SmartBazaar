@@ -49,12 +49,15 @@ function detectUserLocation(callback) {
         },
         (error) => {
             console.warn('Geolocation error:', error.message);
-            // Default to Bangalore (fallback silently)
+            // Default to Bangalore (fallback with alert)
             userCoords = { lat: 12.9716, lng: 77.5946 };
             console.log('Falling back to default coordinates:', userCoords);
+            if (typeof alert !== 'undefined') {
+                alert(typeof t !== 'undefined' ? t('fallback_location_msg') || 'Unable to fetch your exact location. Falling back to default.' : 'Unable to fetch your exact location. Falling back to default.');
+            }
             callback(userCoords, null);
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
     );
 }
 
