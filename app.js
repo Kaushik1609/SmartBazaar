@@ -4,11 +4,11 @@ const AppState = {
     userType: 'customer', // 'customer' or 'vendor'
     cart: [],
     language: 'English'
-};
+}
 
 // --- AI API Configuration (Direct Gemini REST API) ---
 const API_BASE = 'http://localhost:5000';
-const GEMINI_API_KEY = 'AIzaSyALCRaHkgThbmCJtNhcWGziJxJhSKgKBd4';
+const GEMINI_API_KEY = 'AIzaSyDQP-3iRPlCMmuH1jnwVa5zkbRdS-AF80c';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 async function askGeminiDirect(prompt, retries = 3) {
